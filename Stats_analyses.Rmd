@@ -1,0 +1,946 @@
+---
+title: "Analyzing the Variation in Melanoma Cell Phenotype to Observe Homeostatic Changes to Cell State"
+author: "Samuel Lukas, Gibran Kapadia, Arhan Rupani, Ella Bai"
+subtitle: 
+date: December 8, 2022
+output: 
+  beamer_presentation:
+    theme: "Pittsburgh"
+    colortheme: "orchid"
+    fonttheme: "structurebold"
+    slide_level: 2
+classoption: "aspectratio=169"
+fontsize: 11pt
+urlcolor: blue
+---
+```{r, include=FALSE}
+knitr::opts_chunk$set(eval=TRUE, include=TRUE, echo=TRUE, message=FALSE, warning=FALSE)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+
+# echo=FALSE will stop the code chunk from appearing in the knit document
+# warning=FALSE and message=FALSE will stop R messages from appearing in the knit document
+library(rpart)
+library(partykit)
+library(broom)
+library(latex2exp)
+library(gridExtra) #install.packages(gridExtra)
+library(kableExtra) #install.packages(kableExtra)
+
+dataset <- read_csv("STA130_Course_Project.csv")
+```
+
+## Introduction
+
+- Wrangle and clean the dataset provided which contains the different protein and transcription levels at varying dose, time, and drug treatment
+- Explore the various relationships between the MiTFg, SOX10, NGFR, AXL proteins and the 22 transcription factors
+- Interpret the results and relate them to the 4 different melanoma cell phenotypes
+- Form a general hypothesis about how these different factors and variables can cause different homeostatic changes that result in harmful or beneficial phenotypes
+
+---
+
+## Objectives
+
+1. Observe how protein levels in an arbitrary experimental condition change over time
+
+2. Determine the relationship between different proteins at varying experimental conditions at times
+
+3. Create a model predicting cellular phenotypical outcomes or values/states form transcription factors
+
+4. Decipher the results and conclude any patterns or commonalities between the analyses
+
+---
+
+## Statistical Methods
+
+Throughout the analysis we will use various techniques to come to conclusions:
+
+1. Hypothesis Testing
+
+2. Correlation Estimation
+
+3. Classification Modelling
+
+---
+
+## MiTFg with Ven: 0.316 uM dose, 0.5h vs. 120h
+
+:::columns
+
+::::column
+
+- $H_0$: There is no change in the level of MiTFg protein between times when Vem is administered
+- $H_a$: There is a change in the level of MiTFg protein between times when Vem is administered
+- At the alpha significance level of 0.01, we have enough evidence to reject the null hypothesis and conclude there is a difference in MiTFg level at different times
+
+::::
+
+
+::::column
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='right'}
+MiTFg1 <- dataset %>% filter(timepoint_id == 1, dose_id == 3, drug_id == 1) %>% select(MiTFg)
+MiTFg2 <- dataset %>% filter(timepoint_id == 7, dose_id == 3, drug_id == 1) %>% select(MiTFg)
+
+set.seed(131)
+N<-100000
+n1 <- 75
+n2 <- 75
+
+mean_t1 <- mean(MiTFg1$MiTFg)
+mean_t2 <- mean(MiTFg2$MiTFg)
+
+observed_test_statistic <- mean_t1 - mean_t2
+permutation_test_statistics<-1:N
+
+x1 <- rnorm(mean=mean_t1, n=n1)
+x2 <- rnorm(mean=mean_t1, n=n2)
+
+for(i in 1:N) {
+  shuffled_xs <- sample(c(x1,x2), size=n1+n2, replace=FALSE)
+  tmp <- mean(shuffled_xs[1:n1]) - mean(shuffled_xs[(n1+1):(n1+n2)])
+  permutation_test_statistics[i] <- tmp
+}
+
+tibble("xbar1-xbar2"=permutation_test_statistics) %>% ggplot(aes(x=`xbar1-xbar2`)) + geom_histogram(bins=50) +
+xlim(-0.8,0.8) + geom_vline(xintercept=observed_test_statistic) + ggtitle(TeX(paste("Sampling Distribution of $\\bar{x}_1 - \\bar{x}_2$ for n1=75 and n2=75 if $H_0: \\; x_1=x_2$ is TRUE"))) + theme(plot.title = element_text(size = 7))
+
+mean(abs(permutation_test_statistics)>=abs(observed_test_statistic))
+```
+::::
+
+:::
+
+---
+
+## MiTFg with Vem+Tram: 0.316uM dose, 0.5h vs. 120h
+
+:::columns
+
+::::column
+
+- $H_0$: There is no change in the level of MiTFg protein between times when Vem and Tram is administered
+- $H_a$: There is a change in the level of MiTFg protein between times when Vem and Tram is administered
+- At the alpha significance level of 0.01, we don't have enough evidence to reject the null hypothesis
+
+::::
+
+
+::::column
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='right'}
+MiTFg1 <- dataset %>% filter(timepoint_id == 1, dose_id == 3, drug_id == 2) %>% select(MiTFg)
+MiTFg2 <- dataset %>% filter(timepoint_id == 7, dose_id == 3, drug_id == 2) %>% select(MiTFg)
+
+set.seed(131)
+N<-100000
+n1 <- 75
+n2 <- 75
+
+mean_t1 <- mean(MiTFg1$MiTFg)
+mean_t2 <- mean(MiTFg2$MiTFg)
+
+observed_test_statistic <- mean_t1 - mean_t2
+permutation_test_statistics<-1:N
+
+x1 <- rnorm(mean=mean_t1, n=n1)
+x2 <- rnorm(mean=mean_t1, n=n2)
+
+for(i in 1:N) {
+  shuffled_xs <- sample(c(x1,x2), size=n1+n2, replace=FALSE)
+  tmp <- mean(shuffled_xs[1:n1]) - mean(shuffled_xs[(n1+1):(n1+n2)])
+  permutation_test_statistics[i] <- tmp
+}
+
+tibble("xbar1-xbar2"=permutation_test_statistics) %>% ggplot(aes(x=`xbar1-xbar2`)) + geom_histogram(bins=50) +
+xlim(-0.8,0.8) + geom_vline(xintercept=observed_test_statistic) + ggtitle(TeX(paste("Sampling Distribution of $\\bar{x}_1 - \\bar{x}_2$ for n1=75 and n2=75 if $H_0: \\; x_1=x_2$ is TRUE"))) + theme(plot.title = element_text(size = 7))
+
+mean(abs(permutation_test_statistics)>=abs(observed_test_statistic))
+```
+::::
+
+:::
+
+
+---
+
+## SOX10 with Vem: 0.316uM dose, 0.5h vs. 120h
+
+
+:::columns
+
+::::column
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='right'}
+sox1 <- dataset %>% filter(timepoint_id == 1, dose_id == 3, drug_id == 1) %>% select(Sox10)
+sox2 <- dataset %>% filter(timepoint_id == 7, dose_id == 3, drug_id == 1) %>% select(Sox10)
+
+set.seed(131)
+N<-100000
+n1 <- 75
+n2 <- 75
+
+mean_t1 <- mean(sox1$Sox10)
+mean_t2 <- mean(sox2$Sox10)
+
+observed_test_statistic <- mean_t1 - mean_t2
+permutation_test_statistics<-1:N
+
+x1 <- rnorm(mean=mean_t1, n=n1)
+x2 <- rnorm(mean=mean_t1, n=n2)
+
+for(i in 1:N) {
+  shuffled_xs <- sample(c(x1,x2), size=n1+n2, replace=FALSE)
+  tmp <- mean(shuffled_xs[1:n1]) - mean(shuffled_xs[(n1+1):(n1+n2)])
+  permutation_test_statistics[i] <- tmp
+}
+
+tibble("xbar1-xbar2"=permutation_test_statistics) %>% ggplot(aes(x=`xbar1-xbar2`)) + geom_histogram(bins=50) +
+xlim(-0.8,0.8) + geom_vline(xintercept=observed_test_statistic) + ggtitle(TeX(paste("Sampling Distribution of $\\bar{x}_1 - \\bar{x}_2$ for n1=75 and n2=75 if $H_0: \\; x_1=x_2$ is TRUE"))) + theme(plot.title = element_text(size = 7))
+
+mean(abs(permutation_test_statistics)>=abs(observed_test_statistic))
+```
+::::
+
+::::column
+
+- $H_0$: There is no change in the level of SOX10 protein between times when Vem is administered
+- $H_a$: There is a change in the level of SOX10 protein between times when Vem is administered
+- At the alpha significance level of 0.01, we don't have enough evidence to reject the null hypothesis
+
+::::
+
+:::
+
+---
+
+## SOX10 with Vem+Tram: 0.316uM dose, 0.5h vs. 120h
+
+
+:::columns
+
+
+::::column
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='right'}
+sox1 <- dataset %>% filter(timepoint_id == 1, dose_id == 3, drug_id == 2) %>% select(Sox10)
+sox2 <- dataset %>% filter(timepoint_id == 7, dose_id == 3, drug_id == 2) %>% select(Sox10)
+
+set.seed(131)
+N<-100000
+n1 <- 75
+n2 <- 75
+
+mean_t1 <- mean(sox1$Sox10)
+mean_t2 <- mean(sox2$Sox10)
+
+observed_test_statistic <- mean_t1 - mean_t2
+permutation_test_statistics<-1:N
+
+x1 <- rnorm(mean=mean_t1, n=n1)
+x2 <- rnorm(mean=mean_t1, n=n2)
+
+for(i in 1:N) {
+  shuffled_xs <- sample(c(x1,x2), size=n1+n2, replace=FALSE)
+  tmp <- mean(shuffled_xs[1:n1]) - mean(shuffled_xs[(n1+1):(n1+n2)])
+  permutation_test_statistics[i] <- tmp
+}
+
+tibble("xbar1-xbar2"=permutation_test_statistics) %>% ggplot(aes(x=`xbar1-xbar2`)) + geom_histogram(bins=50) +
+xlim(-0.8,0.8) + geom_vline(xintercept=observed_test_statistic) + ggtitle(TeX(paste("Sampling Distribution of $\\bar{x}_1 - \\bar{x}_2$ for n1=75 and n2=75 if $H_0: \\; x_1=x_2$ is TRUE"))) + theme(plot.title = element_text(size = 7))
+
+mean(abs(permutation_test_statistics)>=abs(observed_test_statistic))
+```
+::::
+
+
+::::column
+
+- $H_0$: There is no change in the level of SOX10 protein between times when Vem and Tram is administered
+- $H_a$: There is a change in the level of SOX10 protein between times when Vem and Tram is administered
+- Similarly, at the alpha significance level of 0.01, we don't have enough evidence to reject the null hypothesis
+
+::::
+
+
+:::
+
+
+---
+
+## NGFR with Vem: 0.316uM dose, 0.5h vs. 120h
+
+
+:::columns
+
+::::column
+
+- $H_0$: There is no change in the level of NGFR protein between times when Vem is administered
+- $H_a$: There is a change in the level of NGFR protein between times when Vem is administered
+- At the alpha significance level of 0.01, we have overwhelming evidence to reject the null hypothesis and conclude that there is a change in NGFR level between times when Vem is administered
+
+::::
+
+
+::::column
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='right'}
+ngfr1 <- dataset %>% filter(timepoint_id == 1, dose_id == 3, drug_id == 1) %>% select(NGFR)
+ngfr2 <- dataset %>% filter(timepoint_id == 7, dose_id == 3, drug_id == 1) %>% select(NGFR)
+
+set.seed(131)
+N<-100000
+n1 <- 75
+n2 <- 75
+
+mean_t1 <- mean(ngfr1$NGFR)
+mean_t2 <- mean(ngfr2$NGFR)
+
+observed_test_statistic <- mean_t1 - mean_t2
+permutation_test_statistics<-1:N
+
+x1 <- rnorm(mean=mean_t1, n=n1)
+x2 <- rnorm(mean=mean_t1, n=n2)
+
+for(i in 1:N) {
+  shuffled_xs <- sample(c(x1,x2), size=n1+n2, replace=FALSE)
+  tmp <- mean(shuffled_xs[1:n1]) - mean(shuffled_xs[(n1+1):(n1+n2)])
+  permutation_test_statistics[i] <- tmp
+}
+
+tibble("xbar1-xbar2"=permutation_test_statistics) %>% ggplot(aes(x=`xbar1-xbar2`)) + geom_histogram(bins=50) +
+xlim(-0.8,0.8) + geom_vline(xintercept=observed_test_statistic) + ggtitle(TeX(paste("Sampling Distribution of $\\bar{x}_1 - \\bar{x}_2$ for n1=75 and n2=75 if $H_0: \\; x_1=x_2$ is TRUE"))) + theme(plot.title = element_text(size = 7))
+
+mean(abs(permutation_test_statistics)>=abs(observed_test_statistic))
+```
+::::
+
+:::
+
+---
+
+## NGFR with Vem+Tram: 0.316uM dose, 0.5h vs. 120h
+
+
+:::columns
+
+::::column
+
+- $H_0$: There is no change in the level of NGFR protein between times when Vem and Tram is administered
+- $H_a$: There is a change in the level of NGFR protein between times when Vem and Tram is administered
+- Similarly, at the alpha significance level of 0.01, we have overwhelming evidence to reject the null hypothesis and conclude that there is a change in NGFR level between times when Vem and Tram is administered
+
+::::
+
+
+::::column
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='right'}
+ngfr1 <- dataset %>% filter(timepoint_id == 1, dose_id == 3, drug_id == 2) %>% select(NGFR)
+ngfr2 <- dataset %>% filter(timepoint_id == 7, dose_id == 3, drug_id == 2) %>% select(NGFR)
+
+set.seed(131)
+N<-100000
+n1 <- 75
+n2 <- 75
+
+mean_t1 <- mean(ngfr1$NGFR)
+mean_t2 <- mean(ngfr2$NGFR)
+
+observed_test_statistic <- mean_t1 - mean_t2
+permutation_test_statistics<-1:N
+
+x1 <- rnorm(mean=mean_t1, n=n1)
+x2 <- rnorm(mean=mean_t1, n=n2)
+
+for(i in 1:N) {
+  shuffled_xs <- sample(c(x1,x2), size=n1+n2, replace=FALSE)
+  tmp <- mean(shuffled_xs[1:n1]) - mean(shuffled_xs[(n1+1):(n1+n2)])
+  permutation_test_statistics[i] <- tmp
+}
+
+tibble("xbar1-xbar2"=permutation_test_statistics) %>% ggplot(aes(x=`xbar1-xbar2`)) + geom_histogram(bins=50) +
+xlim(-0.8,0.8) + geom_vline(xintercept=observed_test_statistic) + ggtitle(TeX(paste("Sampling Distribution of $\\bar{x}_1 - \\bar{x}_2$ for n1=75 and n2=75 if $H_0: \\; x_1=x_2$ is TRUE"))) + theme(plot.title = element_text(size = 7))
+
+mean(abs(permutation_test_statistics)>=abs(observed_test_statistic))
+```
+::::
+
+:::
+
+
+---
+
+## AXL with Vem: 0.316uM dose, 0.5h vs. 120h
+
+
+:::columns
+
+
+::::column
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='right'}
+axl1 <- dataset %>% filter(timepoint_id == 1, dose_id == 3, drug_id == 1) %>% select(AXL)
+axl2 <- dataset %>% filter(timepoint_id == 7, dose_id == 3, drug_id == 1) %>% select(AXL)
+
+set.seed(131)
+N<-100000
+n1 <- 75
+n2 <- 75
+
+mean_t1 <- mean(axl1$AXL)
+mean_t2 <- mean(axl2$AXL)
+
+observed_test_statistic <- mean_t1 - mean_t2
+permutation_test_statistics<-1:N
+
+x1 <- rnorm(mean=mean_t1, n=n1)
+x2 <- rnorm(mean=mean_t1, n=n2)
+
+for(i in 1:N) {
+  shuffled_xs <- sample(c(x1,x2), size=n1+n2, replace=FALSE)
+  tmp <- mean(shuffled_xs[1:n1]) - mean(shuffled_xs[(n1+1):(n1+n2)])
+  permutation_test_statistics[i] <- tmp
+}
+
+tibble("xbar1-xbar2"=permutation_test_statistics) %>% ggplot(aes(x=`xbar1-xbar2`)) + geom_histogram(bins=50) +
+xlim(-0.8,0.8) + geom_vline(xintercept=observed_test_statistic) + ggtitle(TeX(paste("Sampling Distribution of $\\bar{x}_1 - \\bar{x}_2$ for n1=75 and n2=75 if $H_0: \\; x_1=x_2$ is TRUE"))) + theme(plot.title = element_text(size = 7))
+
+mean(abs(permutation_test_statistics)>=abs(observed_test_statistic))
+```
+::::
+
+
+::::column
+
+- $H_0$: There is no change in the level of AXL protein between times when Vem is administered
+- $H_a$: There is a change in the level of AXL protein between times when Vem is administered
+- At the alpha significance level of 0.01, we have evidence to reject the null hypothesis and conclude that there is a change in AXL level between times when Vem is administered
+
+::::
+
+
+:::
+
+
+---
+
+## AXL with Vem+Tram: 0.316uM dose, 0.5h vs. 120h
+
+
+:::columns
+
+
+::::column
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=4, fig.align='right'}
+axl1 <- dataset %>% filter(timepoint_id == 1, dose_id == 3, drug_id == 2) %>% select(AXL)
+axl2 <- dataset %>% filter(timepoint_id == 7, dose_id == 3, drug_id == 2) %>% select(AXL)
+
+set.seed(131)
+N<-100000
+n1 <- 75
+n2 <- 75
+
+mean_t1 <- mean(axl1$AXL)
+mean_t2 <- mean(axl2$AXL)
+
+observed_test_statistic <- mean_t1 - mean_t2
+permutation_test_statistics<-1:N
+
+x1 <- rnorm(mean=mean_t1, n=n1)
+x2 <- rnorm(mean=mean_t1, n=n2)
+
+for(i in 1:N) {
+  shuffled_xs <- sample(c(x1,x2), size=n1+n2, replace=FALSE)
+  tmp <- mean(shuffled_xs[1:n1]) - mean(shuffled_xs[(n1+1):(n1+n2)])
+  permutation_test_statistics[i] <- tmp
+}
+
+tibble("xbar1-xbar2"=permutation_test_statistics) %>% ggplot(aes(x=`xbar1-xbar2`)) + geom_histogram(bins=50) +
+xlim(-0.8,0.8) + geom_vline(xintercept=observed_test_statistic) + ggtitle(TeX(paste("Sampling Distribution of $\\bar{x}_1 - \\bar{x}_2$ for n1=75 and n2=75 if $H_0: \\; x_1=x_2$ is TRUE"))) + theme(plot.title = element_text(size = 7))
+
+mean(abs(permutation_test_statistics)>=abs(observed_test_statistic))
+```
+::::
+
+
+::::column
+
+- $H_0$: There is no change in the level of AXL protein between times when Vem is administered
+- $H_a$: There is a change in the level of AXL protein between times when Vem is administered
+- At the alpha significance level of 0.01, we don't have evidence to reject the null hypothesis
+
+::::
+
+
+:::
+
+---
+
+## Correlation between MiTFg and NGFR
+
+:::::: {.columns}
+
+::: {.column width="45%"}
+
+- We measure varying dosage and drug treatment at a set time
+- The correlation between MiTFg and NGFR is relatively weak
+- As dosage is increased, protein levels of NGFR slightly decrease in relation to MiTFg, however, when Vem+Tram is used, NGFR increases
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=4, fig.height=2}
+
+dose_vem1 <- dataset %>% filter(drug_id == 1, dose_id == 2, timepoint_id == 1)
+dose_vem2 <- dataset %>% filter(drug_id == 1, dose_id == 3, timepoint_id == 1)
+dose_vt1 <- dataset %>% filter(drug_id == 2, dose_id == 2, timepoint_id == 1)
+dose_vt2 <- dataset %>% filter(drug_id == 2, dose_id == 3, timepoint_id == 1)
+
+cor1 <- cor(dose_vem1$MiTFg, dose_vem1$NGFR)
+cor2 <- cor(dose_vem2$MiTFg, dose_vem2$NGFR)
+cor3 <- cor(dose_vt1$MiTFg, dose_vt1$NGFR)
+cor4 <- cor(dose_vt2$MiTFg, dose_vt2$NGFR)
+
+cor_c <- c(cor1, cor2, cor3, cor4)
+
+cors <- matrix(cor_c, nrow = 2, ncol = 2)
+colnames(cors) <- c("0.1 uM", "0.316uM")
+rownames(cors) <- c("Vem", "Vem + Tram")
+
+
+cors %>% kbl() %>% kable_minimal(full_width = F)
+
+
+```
+
+::: 
+
+
+::: {.column width="55%"}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+dose_vem1 %>% ggplot(aes(x=MiTFg, y=NGFR)) + geom_point() + labs(title="Association of NGFR vs. MiTFG with 0.1uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot1
+
+dose_vem2 %>% ggplot(aes(x=MiTFg, y=NGFR)) + geom_point() + labs(title="Association of NGFR vs. MiTFG with 0.316uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot2
+
+dose_vt1 %>% ggplot(aes(x=MiTFg, y=NGFR)) + geom_point() + labs(title="Association of NGFR vs. MiTFG with 0.1uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot3
+
+dose_vt2 %>% ggplot(aes(x=MiTFg, y=NGFR)) + geom_point() + labs(title="Association of NGFR vs. MiTFG with 0.316uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot4
+
+grid.arrange(plot1, plot2, plot3, plot4)
+
+```
+
+
+
+:::
+
+::::::
+
+---
+
+
+## Correlation between MiTFg and SOX10
+
+:::::: {.columns}
+
+::: {.column width="45%"}
+
+- The relationship between MiTFg and SOX10 is relatively stronger
+- Correlation seems to become weaker for Vem but stays the same for Vem and Tram
+- The level of SOX10 decreases as dosage of Vem is increased in relation to MiTFg. When Vem+Tram is used, protein level stays the same
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=4, fig.height=2}
+
+cor1 <- cor(dose_vem1$MiTFg, dose_vem1$Sox10)
+cor2 <- cor(dose_vem2$MiTFg, dose_vem2$Sox10)
+cor3 <- cor(dose_vt1$MiTFg, dose_vt1$Sox10)
+cor4 <- cor(dose_vt2$MiTFg, dose_vt2$Sox10)
+
+cor_c <- c(cor1, cor2, cor3, cor4)
+
+cors <- matrix(cor_c, nrow = 2, ncol = 2)
+colnames(cors) <- c("0.1 uM", "0.316uM")
+rownames(cors) <- c("Vem", "Vem + Tram")
+
+cors %>% kbl() %>% kable_minimal(full_width = F)
+
+
+```
+
+:::
+
+
+::: {.column width="55%"}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+dose_vem1 %>% ggplot(aes(x=MiTFg, y=Sox10)) + geom_point() + labs(title="Association of SOX10 vs. MiTFG with 0.1uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot1
+
+dose_vem2 %>% ggplot(aes(x=MiTFg, y=Sox10)) + geom_point() + labs(title="Association of SOX10 vs. MiTFG with 0.316uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot2
+
+dose_vt1 %>% ggplot(aes(x=MiTFg, y=Sox10)) + geom_point() + labs(title="Association of SOX10 vs. MiTFG with 0.1uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot3
+
+dose_vt2 %>% ggplot(aes(x=MiTFg, y=Sox10)) + geom_point() + labs(title="Association of SOX10 vs. MiTFG with 0.316uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot4
+
+grid.arrange(plot1, plot2, plot3, plot4)
+```
+
+
+
+:::
+
+::::::
+
+---
+
+
+## Correlation between MiTFg and AXL
+
+:::::: {.columns}
+
+::: {.column width="45%"}
+
+- As shown by the table, there seems to be no correlation between MiTFg and AXL
+- This means that they would not be good predictors of each other
+- Protein level of AXL roughly stays the same in relation to MiTFg when dosage is increased for both drug treatments
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=4, fig.height=2}
+
+cor1 <- cor(dose_vem1$MiTFg, dose_vem1$AXL)
+cor2 <- cor(dose_vem2$MiTFg, dose_vem2$AXL)
+cor3 <- cor(dose_vt1$MiTFg, dose_vt1$AXL)
+cor4 <- cor(dose_vt2$MiTFg, dose_vt2$AXL)
+
+cor_c <- c(cor1, cor2, cor3, cor4)
+
+cors <- matrix(cor_c, nrow = 2, ncol = 2)
+colnames(cors) <- c("0.1 uM", "0.316uM")
+rownames(cors) <- c("Vem", "Vem + Tram")
+
+cors %>% kbl() %>% kable_minimal(full_width = F)
+
+
+```
+
+:::
+
+
+::: {.column width="55%"}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+dose_vem1 %>% ggplot(aes(x=MiTFg, y=AXL)) + geom_point() + labs(title="Association of AXL vs. MiTFG with 0.1uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot1
+
+dose_vem2 %>% ggplot(aes(x=MiTFg, y=AXL)) + geom_point() + labs(title="Association of AXL vs. MiTFG with 0.316uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot2
+
+dose_vt1 %>% ggplot(aes(x=MiTFg, y=AXL)) + geom_point() + labs(title="Association of AXL vs. MiTFG with 0.1uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot3
+
+dose_vt2 %>% ggplot(aes(x=MiTFg, y=AXL)) + geom_point() + labs(title="Association of AXL vs. MiTFG with 0.316uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot4
+
+grid.arrange(plot1, plot2, plot3, plot4)
+```
+
+
+
+:::
+
+::::::
+
+---
+
+
+## Correlation between NGFR and SOX10
+
+:::::: {.columns}
+
+::: {.column width="45%"}
+
+- The relationship between NGFR and SOX10 is relatively weak
+- The $r$ coefficient increases with dose for both drug treatments
+- As dosage of both Vem and Vem+Tram is increased, the level of SOX10 increases in relation to NGFR 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=4, fig.height=2}
+
+cor1 <- cor(dose_vem1$NGFR, dose_vem1$Sox10)
+cor2 <- cor(dose_vem2$NGFR, dose_vem2$Sox10)
+cor3 <- cor(dose_vt1$NGFR, dose_vt1$Sox10)
+cor4 <- cor(dose_vt2$NGFR, dose_vt2$Sox10)
+
+cor_c <- c(cor1, cor2, cor3, cor4)
+
+cors <- matrix(cor_c, nrow = 2, ncol = 2)
+colnames(cors) <- c("0.1 uM", "0.316uM")
+rownames(cors) <- c("Vem", "Vem + Tram")
+
+
+cors %>% kbl() %>% kable_minimal(full_width = F)
+
+
+```
+
+:::
+
+
+::: {.column width="55%"}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+dose_vem1 %>% ggplot(aes(x=NGFR, y=Sox10)) + geom_point() + labs(title="Association of SOX10 vs. NGFR with 0.1uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot1
+
+dose_vem2 %>% ggplot(aes(x=NGFR, y=Sox10)) + geom_point() + labs(title="Association of SOX10 vs. NGFR with 0.316uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot2
+
+dose_vt1 %>% ggplot(aes(x=NGFR, y=Sox10)) + geom_point() + labs(title="Association of SOX10 vs. NGFR with 0.1uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot3
+
+dose_vt2 %>% ggplot(aes(x=NGFR, y=Sox10)) + geom_point() + labs(title="Association of SOX10 vs. NGFR with 0.316uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot4
+
+grid.arrange(plot1, plot2, plot3, plot4)
+```
+
+
+
+:::
+
+::::::
+
+
+---
+
+## Correlation between NGFR and AXL
+
+:::::: {.columns}
+
+::: {.column width="45%"}
+
+- The relationship between NGFR and AXL is relatively weak
+- The $r$ coefficient decreases with dose for both drug treatments
+- The level of AXL decreases in relation to NGFR as dosage of Vem and Vem+Tram is increased
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=4, fig.height=2}
+
+cor1 <- cor(dose_vem1$NGFR, dose_vem1$AXL)
+cor2 <- cor(dose_vem2$NGFR, dose_vem2$AXL)
+cor3 <- cor(dose_vt1$NGFR, dose_vt1$AXL)
+cor4 <- cor(dose_vt2$NGFR, dose_vt2$AXL)
+
+cor_c <- c(cor1, cor2, cor3, cor4)
+
+cors <- matrix(cor_c, nrow = 2, ncol = 2)
+colnames(cors) <- c("0.1 uM", "0.316uM")
+rownames(cors) <- c("Vem", "Vem + Tram")
+
+
+cors %>% kbl() %>% kable_minimal(full_width = F)
+
+
+```
+
+:::
+
+
+::: {.column width="55%"}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+dose_vem1 %>% ggplot(aes(x=NGFR, y=AXL)) + geom_point() + labs(title="Association of AXL vs. NGFR with 0.1uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot1
+
+dose_vem2 %>% ggplot(aes(x=NGFR, y=AXL)) + geom_point() + labs(title="Association of AXL vs. NGFR with 0.316uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot2
+
+dose_vt1 %>% ggplot(aes(x=NGFR, y=AXL)) + geom_point() + labs(title="Association of AXL vs. NGFR with 0.1uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot3
+
+dose_vt2 %>% ggplot(aes(x=NGFR, y=AXL)) + geom_point() + labs(title="Association of AXL vs. NGFR with 0.316uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot4
+
+grid.arrange(plot1, plot2, plot3, plot4)
+```
+
+
+
+:::
+
+::::::
+
+
+---
+
+## Correlation between SOX10 and AXL
+
+:::::: {.columns}
+
+::: {.column width="45%"}
+
+- As shown by the table, there seems to be no correlation between SOX10 and AXL
+- This means that they would not be good predictors of each other
+- Protein level of AXL roughly stays the same in relation to SOX10 when dosage is increased for both drug treatments
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=4, fig.height=2}
+
+cor1 <- cor(dose_vem1$Sox10, dose_vem1$AXL)
+cor2 <- cor(dose_vem2$Sox10, dose_vem2$AXL)
+cor3 <- cor(dose_vt1$Sox10, dose_vt1$AXL)
+cor4 <- cor(dose_vt2$Sox10, dose_vt2$AXL)
+
+cor_c <- c(cor1, cor2, cor3, cor4)
+
+cors <- matrix(cor_c, nrow = 2, ncol = 2)
+colnames(cors) <- c("0.1 uM", "0.316uM")
+rownames(cors) <- c("Vem", "Vem + Tram")
+
+
+cors %>% kbl() %>% kable_minimal(full_width = F)
+
+
+```
+
+:::
+
+
+::: {.column width="55%"}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+dose_vem1 %>% ggplot(aes(x=Sox10, y=AXL)) + geom_point() + labs(title="Association of AXL vs. SOX10 with 0.1uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot1
+
+dose_vem2 %>% ggplot(aes(x=Sox10, y=AXL)) + geom_point() + labs(title="Association of AXL vs. SOX10 with 0.316uM of Vem") + theme(plot.title = element_text(size = 12)) -> plot2
+
+dose_vt1 %>% ggplot(aes(x=Sox10, y=AXL)) + geom_point() + labs(title="Association of AXL vs. SOX10 with 0.1uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot3
+
+dose_vt2 %>% ggplot(aes(x=Sox10, y=AXL)) + geom_point() + labs(title="Association of AXL vs. SOX10 with 0.316uM of Vem+Tram") + theme(plot.title = element_text(size = 12)) -> plot4
+
+grid.arrange(plot1, plot2, plot3, plot4)
+```
+
+
+
+:::
+
+::::::
+
+
+---
+
+## Predicting Phenotype through Transcription Factors
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, message=FALSE, size="small", echo=FALSE, fig.width=7, fig.height=3}
+
+new_data <- dataset %>% mutate(
+  phenotype = case_when(
+    MiTFg <= mean(dataset$MiTFg) &
+    NGFR > mean(dataset$NGFR) &
+    Sox10 > mean(dataset$Sox10) &
+    AXL > mean(dataset$AXL) ~ "Neural crest-like",
+    MiTFg > mean(dataset$MiTFg) &
+    NGFR > mean(dataset$NGFR) &
+    Sox10 > mean(dataset$Sox10) &
+    AXL <= mean(dataset$AXL) ~ "Transitory",
+    MiTFg > mean(dataset$MiTFg) &
+    NGFR > mean(dataset$NGFR) &
+    Sox10 <= mean(dataset$Sox10) &
+    AXL <= mean(dataset$AXL) ~ "Melanocytic",
+    MiTFg <= mean(dataset$MiTFg) &
+    NGFR <= mean(dataset$NGFR) &
+    Sox10 <= mean(dataset$Sox10) &
+    AXL > mean(dataset$AXL) ~ "Undifferentiated",
+  )) %>% filter(!is.na(phenotype)) %>% mutate(id = row_number())
+
+n <- nrow(new_data)
+train_ids <- sample(1:n, size=round(0.8*n))
+train <- new_data %>% filter(id %in% train_ids)
+y_train <- train$phenotype
+test <- new_data %>% filter(!(id %in% train_ids))
+y_test <- test$phenotype
+
+tree <- rpart(phenotype ~ Phospho_c_Fos+Phospho_c_Jun+Phospho_ATF2+Phospho_Fra1+c_Fos+c_Jun+Fra1+JunD+ATF2+JunB+Fra2+ATF4+Phospho_ATF4+Phospho_Erk1+Phospho_ATF1+ATF6+Phospho_S6+ATF3+ATF5+Phospho_p38+Ki_67+NF_kappaB, data=train)
+tree %>% as.party() %>% plot(type="simple", gp=gpar(cex=0.5), ep_args = list(justmin=15),
+  tp_args = list(id=FALSE, FUN = function(info) list(
+    format(info$prediction), format(paste("n =",info$n)), 
+    format(paste(round(info$err,1),"% err",sep="")))))
+
+```
+
+
+### Based on solely transcription factors, cells are most likely to be either Transitory or Undifferentiated
+
+---
+
+## Predicting Phenotype Continued
+
+
+### Along with our previous observations, we can start to predict certain phenotypes
+
+- The terminal nodes have high error so they may not be the best predictors
+- However, certain transcription factors such as PhosphoS6, ATF4, and Ki67 may lead to an undifferentiated melanoma cell
+- Similarly, transcription factors such as Ki67, ATF4, and Fra2 may lead to a transitory melanoma cell
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+
+phen <- matrix(c("LOW", "LOW", "HIGH", "HIGH", "LOW", "HIGH", "HIGH", "HIGH", "LOW", "HIGH", "HIGH", "LOW", "HIGH", "HIGH", "LOW", "LOW"), ncol = 4, nrow = 4)
+
+colnames(phen) <- c("MiTFg", "NGFR", "SOX10", "AXL")
+
+rownames(phen) <- c("Undifferentiated", "Neural crest-like", "Transitory", "Melanocytic")
+
+phen %>% kbl() %>% kable_styling()
+
+
+
+```
+
+
+
+
+---
+
+## Meta-analysis
+
+### Protein level in varying time and drug treatment: 
+- As time increases, levels of NGFR seems to increase while SOX10 stays roughly the same, and both AXL and MiTFg seem to decrease
+- When Vem is used, the protein levels of MiTFg, SOX10, and AXL seems to decrease the most in comparison to Vem and Tram
+
+### Protein Correlation
+- We want low dosage since the correlation between MiTFg and SOX10 is the strongest
+- From previous analysis, MiTFg decrease with time and a high $r$ value suggests a significant decrease in SOX10 which is desirable 
+- A low correlation would be a high risk in the case of NGFR and AXL, hence, we want a high correlation and thus low dosage in order to minimize risk
+
+---
+
+## Meta-analysis continued
+
+To encourage healthy homeostasis, we want to avoid certain transcription factors and instead encourage the presence of factors that result in undifferentiated cells
+
+### Transcription Factors
+
+
+| Phenotype                          	| Transcription Factors                                                                                                  	|
+|------------------------------------	|------------------------------------------------------------------------------------------------------------------------	|
+| - Undifferentiated                 	| - PhosphoS6, ATF4, and Ki_67 may lead to low levels of MiTFg, NGFR, and SOX10 and high levels of AXL                   	|
+| - Neural Crest-Like                	| - Ki_67, Fra2, and c_Jun can be used to predict low levels of MiTFg with high levels of NGFR, SOX10, and AXL           	|
+| - Transitory                       	| - Ki_67, ATF4, and Fra2 may lead to high levels of MiTFg, NGFR, and SOX10 and low levels of AXL                        	|
+| - Melanocytic                      	| - Ki_67, Fra2, ATF4, or c_Fos could potentially lead to high levels of MiTFg and NGFR, and low levels of SOX10 and AXL 	|
+
+
+---
+
+## Conclusion
+
+### To keep the cell as undifferentiated and healthy, MiTFg, SOX10, and NGFR must be low while AXL is high, hence:
+- We should use Vem with a relatively low dosage with an average amount of time to keep protein level around the same
+- Since both SOX10 and MiTFg have no correlation in terms of dosage with AXL, only the dosage between AXL and NGFR matters
+- We want to avoid treatments that increase levels of Ki_67, Fra2, ATF4, or c_Fos
+
+### Limitations and Assumptions:
+- We conduct these statistical test assuming that only dosage, time, and drug affects protein level and no other confounding variable has underlying affects on the data
+- Data and results can not be generalized or extrapolated to other carcinogenic cells since data collected is only about potentially carcinogenic melanoma cells
+
