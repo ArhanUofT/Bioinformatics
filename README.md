@@ -17,3 +17,27 @@ The data we will work with is based on advances in the fields of [Flow Cytometry
 > where the total number of observations $n = \sum_x \sum_t n_{xt}$ is the sum of all the samples $n_{xt}$ in each condition $x$ and time $t$ (which will be different since different batches of cells so we don't always have the same number of cells).
 >
 > - Note that the "number of individual cells" is the "number of observations" on which the (26) measurements have been made for each experimental condition $x$ which is defined by two drugs and their dosage, and each condition is repeated a few times for validation purposes.
+>
+### Course project data
+
+The data for the course project comes from [this article](https://www.biorxiv.org/content/10.1101/2021.12.06.471514v1.full) finding that the 
+"AP-1 transcription factor network" (i.e., the relative distributions and dependency relationships of transcription factors) are predictive of "cellular plasticity in melanoma" (i.e., how easily changable the phenotypes are melanoma cell lines), and is available for download [here](https://drive.google.com/uc?id=1m-bc56NfKErzkxdlHXBLWQg14W2R2vd8&export=download)
+
+| Phenotype Indicators      | MiTFg | Sox10 | NGFR | AXL | | | |
+|--------------------------:|-------|-------|------|-----|-------------|-------------|-------------|
+| AP-1 transcription factors| ATF2  |ATF3   | ATF4 | ATF5|Phospho_ATF1 | Phospho_ATF2 | Phospho_ATF4|
+|                           | ATF6  | JunB  |c_Jun |JunD | Phospho_S6  |Phospho_c_Jun | Phospho_Erk1 |
+|    NF_kappaB              | Fra1  | Fra2  | c_Fos|Ki_67 | Phospho_Fra1 | Phospho_c_Fos | Phospho_p38 |
+
+
+The cellular phenotypes of melanoma cell can be characterized in terms of the HIGH/LOW balance of the four phenotype indicators MiTFg, NGFR, SOX10, and AXL as follows
+
+| Cellular Phenotype \ Gene  | MiTFg| NGFR | SOX10 | AXL |
+|----------------------------|------|------|-------|-----|
+| Undifferentiated           | LOW  | LOW  | LOW   | HIGH|
+| Neural crest-like          | LOW  | HIGH | HIGH  | HIGH| 
+| Transitory                 | HIGH | HIGH | HIGH  | LOW |
+| Melanocytic                | HIGH | HIGH | LOW   | LOW |
+
+where the HIGH/LOW distinctions are determined empirically from the data.
+
